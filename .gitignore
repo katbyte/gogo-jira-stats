@@ -1,0 +1,6 @@
+.DS_Store
+.idea/
+gogo-jira-stats
+*.sqlite3
+*.csv
+graphs
