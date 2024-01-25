@@ -8,7 +8,7 @@ import (
 	"github.com/katbyte/gogo-jira-stats/lib/clog"
 )
 
-const cmdName = "gogo-j-stats"
+const cmdName = "gogo-jira-stats"
 
 func main() {
 	cmd, err := cli.Make(cmdName)

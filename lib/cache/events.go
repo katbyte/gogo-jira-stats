@@ -52,7 +52,11 @@ func (cache Cache) UpsertEventsFromIssue(issue *models.IssueScheme) (*int, error
 		if change.Author != nil {
 			author = change.Author.DisplayName
 		}
-		date := change.Created
+
+		date, err := time.Parse("2006-01-02T15:04:05.000-0700", change.Created)
+		if err != nil {
+			return nil, fmt.Errorf("failed to created parse date %s: %w", change.Created, err)
+		}
 
 		for _, item := range change.Items {
 			stmt, err := cache.DB.Prepare(fmt.Sprintf(`
@@ -82,6 +86,41 @@ func (cache Cache) UpsertEventsFromIssue(issue *models.IssueScheme) (*int, error
 	}
 
 	return &count, nil
+}
+
+func (cache Cache) QueryForEvents(qfmt string, a ...any) ([]Event, error) {
+	q := fmt.Sprintf(qfmt, a...)
+
+	rows, err := cache.DB.Query(q)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare event query '%s': %w", q, err)
+	}
+	defer rows.Close()
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run event query: %w", err)
+	}
+
+	var events []Event
+	for rows.Next() {
+		e := Event{}
+		err = rows.Scan(
+			&e.Key,
+			&e.Author,
+			&e.Date,
+			&e.Field,
+			&e.From,
+			&e.To,
+		)
+
+		events = append(events, e)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan events : %w", err)
+		}
+	}
+
+	return events, nil
 }
 
 func (cache Cache) GetIssueEventsForField(key, field string) ([]Event, error) {
@@ -121,4 +160,10 @@ func (cache Cache) GetIssueEventsForField(key, field string) ([]Event, error) {
 	}
 
 	return events, nil
+}
+
+func (cache Cache) GetAllEvents() ([]Event, error) {
+	return cache.QueryForEvents(`
+		SELECT %s FROM events
+	`, EventColumnsString())
 }

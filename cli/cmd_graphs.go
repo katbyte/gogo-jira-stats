@@ -3,8 +3,12 @@ package cli
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/go-echarts/go-echarts/v2/charts"
+	"github.com/go-echarts/go-echarts/v2/opts"
 	c "github.com/gookit/color"
 	"github.com/katbyte/gogo-jira-stats/lib/cache"
 	"github.com/spf13/cobra"
@@ -70,15 +74,6 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 
 	c.Printf("    PRs open daily..\n")
 
-	// populate dates
-	dates := map[string]DailyOpenIssues{}
-	for day := from; day.Before(to); day = day.AddDate(0, 0, 1) {
-		k := day.Format("2006-01-02")
-		dates[k] = DailyOpenIssues{
-			Date: day,
-		}
-	}
-
 	// get all open prs for range (this should be opened no created but currently we don't have closed date in the cache or easily accessible
 	/*prs, err := theCache.GetIssuesCreatedInDateRange(from, to)
 	if err != nil {
@@ -88,19 +83,38 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 	// for now lets just go over ALL issues until we can query for any open within a date
 	issues, err := theCache.GetAllIssues()
 	if err != nil {
-		return fmt.Errorf("getting issuess: %w", err)
+		return fmt.Errorf("getting all issuess: %w", err)
 
 	}
-	// for each pr in range
+
+	// todo sort these in a predetermined order
+	allStatuses := []string{"Other", "Pending Triage", "Icebox", "Blocked", "Needs More Info", "Accepted", "Prioritized", "In Progress", "In Review"}
+	statusLookupMap := map[string]bool{}
+	for _, status := range allStatuses {
+		statusLookupMap[status] = true
+	}
+
+	// populate dates
+	dates := map[string]DailyOpenIssues{}
+	for day := from.AddDate(0, 0, -1); day.Before(to.AddDate(0, 0, 1)); day = day.AddDate(0, 0, 1) {
+		k := day.Format("2006-01-02")
+		dates[k] = DailyOpenIssues{
+			Date:     day,
+			Statuses: map[string]int{},
+		}
+
+		for _, status := range allStatuses {
+			dates[k].Statuses[status] = 0
+		}
+
+	}
+
 	for _, i := range *issues {
 		opened := time.Date(i.Created.Year(), i.Created.Month(), i.Created.Day(), 0, 0, 0, 0, time.UTC)
 
-		closed := to
-		/*closed := pr.Closed
-		if pr.State == "open" {
-			closed = time.Now()
-		}*/
-		closed = time.Date(closed.Year(), closed.Month(), closed.Day(), 0, 0, 0, 0, time.UTC)
+		if opened.After(to) {
+			continue
+		}
 
 		// figure out timeline of events that matter
 		events, err := theCache.GetIssueEventsForField(i.Key, "status")
@@ -108,163 +122,158 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 			return fmt.Errorf("getting events for %s: %w", i.Key, err)
 		}
 
+		if i.Key == "IPL-5530" {
+			fmt.Printf("found IPL-5530\n")
+		}
+
 		// for each day from open to closed (or now) count this PR using the above array to figure out its "state"
 		// by playing back events to "set the state" until the events
-		status := "Unknown"
-
+		status := "Pending Triage"
 		eventIndex := 0
 		for day := opened; ; day = day.AddDate(0, 0, 1) {
 
-			// skip data before the "from" date
+			// go through all events for "today" and set the status
+			if len(events) > 0 {
+				for ; eventIndex < len(events) && events[eventIndex].Date.Before(day.AddDate(0, 0, 1)); eventIndex++ {
+
+					status = events[eventIndex].To
+					if status == "Closed" {
+						break
+					}
+
+					if ok, _ := statusLookupMap[status]; !ok {
+						status = "Other"
+					}
+				}
+			}
+
+			// skip data before the "from" date, but here so status is updated
 			if day.Before(from.AddDate(0, 0, -1)) {
 				continue
 			}
 
-			// skip ones with no events
-			if len(events) == 0 {
-				break
-			}
-
-			// data key
 			k := day.Format("2006-01-02")
-
 			dayData := dates[k]
 			dayData.Total++
-
-			// go through all events for "today" and set the status
-			for ; eventIndex < len(events) && events[eventIndex].Date.Before(day.AddDate(0, 0, 1)); eventIndex++ {
-				status = events[eventIndex].To
-			}
-
-			dayData.Statuses[status] = dayData.Statuses[status] + 1
+			dayData.Statuses[status]++
 			dates[k] = dayData
 
-			// check is here so PRs open for less than 1 day are counted
-			if !day.Before(closed) {
+			if day.After(to.AddDate(0, 0, -1)) {
 				break
 			}
 
-			if day.After(to) {
+			// if closed we're done
+			if status == "Closed" {
 				break
 			}
+		}
+
+		if status == "Pending Triage" {
+			fmt.Printf("unhandled status: %s\n", i.Key)
 		}
 	}
-	/*
-		var xAxis []string
-		var lineOpen, lineBlocked, lineWaiting, lineWaitingOver, lineTrendLine []opts.LineData
 
-		data := [][]string{{"date", "total", "open", "blocked", "waiting", "waiting-over", "approved", "7 day trend"}}
+	var xAxis []string
 
-		days := make([]string, 0, len(dates))
-		for day := range dates {
-			days = append(days, day)
-		}
-		sort.Strings(days)
+	lineDataMap := map[string][]opts.LineData{}
+	for _, status := range allStatuses {
+		lineDataMap[status] = []opts.LineData{}
+	}
 
-		for _, date := range days {
-			day := dates[date]
-			data = append(data, []string{date, strconv.Itoa(day.Total), strconv.Itoa(day.Open), strconv.Itoa(day.Blocked), strconv.Itoa(day.Waiting), strconv.Itoa(day.WaitingOver), strconv.Itoa(day.Approved)})
+	// todo save csv file?
+	days := make([]string, 0, len(dates))
+	for day := range dates {
+		days = append(days, day)
+	}
+	sort.Strings(days)
 
-			if day.Date.Before(from.AddDate(0, 0, -1)) {
-				continue
-			}
+	for _, date := range days {
+		day := dates[date]
 
-			if day.Date.After(to) {
-				continue
-			}
-
-			xAxis = append(xAxis, date)
-			// totalLine = append(totalLine, opts.LineData{Value: day.Total})
-			lineOpen = append(lineOpen, opts.LineData{Value: day.Open})
-			lineBlocked = append(lineBlocked, opts.LineData{Value: day.Blocked})
-			lineWaiting = append(lineWaiting, opts.LineData{Value: day.Waiting})
-			lineWaitingOver = append(lineWaitingOver, opts.LineData{Value: day.WaitingOver})
-			lineTrendLine = append(lineTrendLine, opts.LineData{Value: day.TrendSevenDay})
+		if day.Date.Before(from.AddDate(0, 0, -1)) {
+			continue
 		}
 
-		// write raw data
-		file, err := os.Create(outPath + "/daily-prs-open.csv")
-		if err != nil {
-			return fmt.Errorf("failed to create file: %w", err)
-		}
-		defer file.Close()
-
-		csv := csv.NewWriter(file)
-		defer csv.Flush()
-
-		for _, r := range data {
-			err := csv.Write(r)
-			if err != nil {
-				panic(err)
-			}
+		if day.Date.After(to) {
+			continue
 		}
 
-		var repoShortNames []string
-		for _, r := range repos {
-			repoShortNames = append(repoShortNames, gh.RepoShortName(r))
+		xAxis = append(xAxis, date)
+		for _, status := range allStatuses {
+			lineDataMap[status] = append(lineDataMap[status], opts.LineData{Value: day.Statuses[status]})
 		}
+	}
 
-		// render graph
-		graph := charts.NewLine()
-		graph.SetGlobalOptions(
-			// charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeWesteros}),
-			charts.WithTitleOpts(opts.Title{
-				Title:    strings.Join(repoShortNames, ",") + " PRs Open (daily)",
-				Subtitle: "By State: open, waiting, waiting (over 14 days), blocked, approved",
-				Left:     "center", // nolint:misspell
-			}),
+	// render graph
+	graph := charts.NewLine()
+	graph.SetGlobalOptions(
+		// charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeWesteros}),
+		charts.WithTitleOpts(opts.Title{
+			Title:    "Azure Team JIRAs Open (daily)",
+			Subtitle: "By Status: " + strings.Join(allStatuses, ", "),
+			Left:     "center", // nolint:misspell
+		}),
 
-			charts.WithXAxisOpts(opts.XAxis{
-				Name: "Date",
-				// AxisLabel: &opts.AxisLabel{Show: true, Formatter: "{value} x-unit"},
-			}),
-			charts.WithYAxisOpts(opts.YAxis{
-				Name: "PRs",
-				// AxisLabel: &opts.AxisLabel{Show: true, Formatter: "{value} x-unit"},
-			}),
-			charts.WithInitializationOpts(opts.Initialization{
-				Width:  "1500px",
-				Height: "750px",
-			}),
-			charts.WithColorsOpts(opts.Colors{"#C13530", "#2E4555", "#62A0A8", "#5470c6", "#000000"}),
-			charts.WithToolboxOpts(opts.Toolbox{Show: true}),
-			charts.WithTooltipOpts(opts.Tooltip{
-				Show:      true,
-				Trigger:   "axis",
-				TriggerOn: "mousemove",
-			}),
-			charts.WithLegendOpts(opts.Legend{
-				Show: true,
-				Top:  "bottom",
-				Left: "center", // nolint:misspell
-			}),
-		)
+		charts.WithXAxisOpts(opts.XAxis{
+			Name: "Date",
+			// AxisLabel: &opts.AxisLabel{Show: true, Formatter: "{value} x-unit"},
+		}),
+		charts.WithYAxisOpts(opts.YAxis{
+			Name: "# Issues",
+			// AxisLabel: &opts.AxisLabel{Show: true, Formatter: "{value} x-unit"},
+		}),
+		charts.WithInitializationOpts(opts.Initialization{
+			Width:  "1500px",
+			Height: "750px",
+		}),
+		charts.WithColorsOpts(opts.Colors{
+			"#440154", // Deep Violet
+			"#7B414B", // Dark Red, replacing the burnt orange
+			"#365C8D", // Dark Blue
+			"#46337E", // Violet
+			"#006D5B", // Dark Teal, replacing the pale blue
+			"#277F8E", // Blue-Green
+			"#1FA187", // Aquamarine
+			"#4AC16D", // Light Green
+			"#9FDA3A", // Yellowish Green
+		}),
 
-		// Put data into instance
-		graph.SetXAxis(xAxis)
+		charts.WithToolboxOpts(opts.Toolbox{Show: true}),
+		charts.WithTooltipOpts(opts.Tooltip{
+			Show:      true,
+			Trigger:   "axis",
+			TriggerOn: "mousemove",
+		}),
+		charts.WithLegendOpts(opts.Legend{
+			Show: true,
+			Top:  "bottom",
+			Left: "center", // nolint:misspell
+		}),
+	)
 
-		prStackOps := []charts.SeriesOpts{
-			charts.WithAreaStyleOpts(opts.AreaStyle{Opacity: 0.8}),
-			charts.WithLineChartOpts(opts.LineChart{Stack: "prs"}),
-			charts.WithLineStyleOpts(opts.LineStyle{Width: 1, Opacity: 0.9}),
-		}
+	// Put data into instance
+	graph.SetXAxis(xAxis)
 
-		graph.AddSeries("Blocked", lineBlocked)
-		graph.AddSeries("Waiting Over 14", lineWaitingOver)
-		graph.AddSeries("Waiting", lineWaiting)
-		graph.AddSeries("Open", lineOpen).SetSeriesOptions(prStackOps...)
+	prStackOps := []charts.SeriesOpts{
+		charts.WithAreaStyleOpts(opts.AreaStyle{Opacity: 0.8}),
+		charts.WithLineChartOpts(opts.LineChart{Stack: "prs"}),
+		charts.WithLineStyleOpts(opts.LineStyle{Width: 1, Opacity: 0.9}),
+	}
 
-		graph.AddSeries("Total - 7 day avg", lineTrendLine)
-		// Where the magic happens
-		file, err = os.Create(outPath + "/daily-prs-open.html")
-		if err != nil {
-			return fmt.Errorf("failed to create file: %w", err)
-		}
+	for _, status := range allStatuses {
+		graph.AddSeries(status, lineDataMap[status]).SetSeriesOptions(prStackOps...)
+	}
 
-		err = graph.Render(file)
-		if err != nil {
-			return fmt.Errorf("failed to render graph graph: %w", err)
-		}
-	*/
+	// Where the magic happens
+	file, err := os.Create(outPath + "/daily-issues-open.html")
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+
+	err = graph.Render(file)
+	if err != nil {
+		return fmt.Errorf("failed to render graph graph: %w", err)
+	}
+
 	return nil
 }

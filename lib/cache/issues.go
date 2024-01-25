@@ -51,7 +51,6 @@ type Issue struct {
 
 	Creator string
 	Created time.Time
-
 	Updated time.Time
 
 	// calculated
@@ -83,6 +82,14 @@ func (cache Cache) UpsertIssueFromJIRA(issue *models.IssueScheme) error {
 		resolution = issue.Fields.Resolution.Name
 	}
 
+	createdDate, err := time.Parse("2006-01-02T15:04:05.000-0700", issue.Fields.Created)
+	if err != nil {
+		return fmt.Errorf("failed to parse Created date %s: %w", issue.Fields.Created, err)
+	}
+	updatedDate, err := time.Parse("2006-01-02T15:04:05.000-0700", issue.Fields.Updated)
+	if err != nil {
+		return fmt.Errorf("failed to parse Updated date %s: %w", issue.Fields.Updated, err)
+	}
 	_, err = stmt.Exec(
 		issue.Key,
 		fmt.Sprintf("%s://%s/browse/%s", parsedURL.Scheme, parsedURL.Host, issue.Key),
@@ -92,8 +99,8 @@ func (cache Cache) UpsertIssueFromJIRA(issue *models.IssueScheme) error {
 		issue.Fields.Summary,
 		strings.Join(issue.Fields.Labels, ", "),
 		issue.Fields.Creator.DisplayName,
-		issue.Fields.Created,
-		issue.Fields.Updated,
+		createdDate,
+		updatedDate,
 		0, // we calculate this after we get all events
 	)
 
@@ -121,8 +128,6 @@ func (cache Cache) QueryForIssues(qfmt string, a ...any) (*[]Issue, error) {
 
 	issues := make([]Issue, 0)
 
-	var createdStr, updatedStr string
-
 	var labels string
 	for rows.Next() {
 		issue := Issue{}
@@ -135,8 +140,8 @@ func (cache Cache) QueryForIssues(qfmt string, a ...any) (*[]Issue, error) {
 			&issue.Summery,
 			&labels,
 			&issue.Creator,
-			&createdStr,
-			&updatedStr,
+			&issue.Created,
+			&issue.Updated,
 			&issue.DaysOpen,
 		)
 		if err != nil {
@@ -144,8 +149,6 @@ func (cache Cache) QueryForIssues(qfmt string, a ...any) (*[]Issue, error) {
 		}
 
 		issue.Labels = strings.Split(labels, ", ")
-		// issue.Created = createdStr
-		// issue.Updated = updatedStr
 
 		issues = append(issues, issue)
 	}

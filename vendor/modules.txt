@@ -1,7 +1,6 @@
 # github.com/ctreminiom/go-atlassian v1.5.1
 ## explicit; go 1.14
 github.com/ctreminiom/go-atlassian/jira/internal
-github.com/ctreminiom/go-atlassian/jira/v2
 github.com/ctreminiom/go-atlassian/jira/v3
 github.com/ctreminiom/go-atlassian/pkg/infra/models
 github.com/ctreminiom/go-atlassian/service
@@ -12,6 +11,13 @@ github.com/ctreminiom/go-atlassian/service/jira
 github.com/fsnotify/fsnotify
 # github.com/go-echarts/go-echarts/v2 v2.2.5-0.20230112064613-d00d0b6999ce
 ## explicit; go 1.15
+github.com/go-echarts/go-echarts/v2/actions
+github.com/go-echarts/go-echarts/v2/charts
+github.com/go-echarts/go-echarts/v2/datasets
+github.com/go-echarts/go-echarts/v2/opts
+github.com/go-echarts/go-echarts/v2/render
+github.com/go-echarts/go-echarts/v2/templates
+github.com/go-echarts/go-echarts/v2/types
 # github.com/golang/protobuf v1.5.2
 ## explicit; go 1.9
 github.com/golang/protobuf/proto
