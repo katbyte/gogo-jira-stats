@@ -93,6 +93,10 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 	for _, status := range allStatuses {
 		statusLookupMap[status] = true
 	}
+	statusMappings := map[string]string{
+		"In Development": "In Progress",
+		"To Do":          "Accepted",
+	}
 
 	// populate dates
 	dates := map[string]DailyOpenIssues{}
@@ -122,13 +126,14 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 			return fmt.Errorf("getting events for %s: %w", i.Key, err)
 		}
 
-		if i.Key == "IPL-5530" {
-			fmt.Printf("found IPL-5530\n")
+		// some issues don't have any status change events, so lets just use the current status
+		status := "Other"
+		if len(events) == 0 && i.Status != "Closed" {
+			status = i.Status
 		}
 
 		// for each day from open to closed (or now) count this PR using the above array to figure out its "state"
 		// by playing back events to "set the state" until the events
-		status := "Pending Triage"
 		eventIndex := 0
 		for day := opened; ; day = day.AddDate(0, 0, 1) {
 
@@ -141,9 +146,13 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 						break
 					}
 
-					if ok, _ := statusLookupMap[status]; !ok {
-						status = "Other"
+					if s, ok := statusMappings[status]; ok {
+						status = s
 					}
+
+					/*if ok, _ := statusLookupMap[status]; !ok {
+						status = "Other"
+					}*/
 				}
 			}
 
@@ -168,8 +177,8 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 			}
 		}
 
-		if status == "Pending Triage" {
-			fmt.Printf("unhandled status: %s\n", i.Key)
+		if status == "Other" {
+			c.Printf("Issue %s is still other\n", i.Key)
 		}
 	}
 
@@ -228,9 +237,9 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 		}),
 		charts.WithColorsOpts(opts.Colors{
 			"#440154", // Deep Violet
-			"#7B414B", // Dark Red, replacing the burnt orange
 			"#365C8D", // Dark Blue
 			"#46337E", // Violet
+			"#7B414B", // Dark Red, replacing the burnt orange
 			"#006D5B", // Dark Teal, replacing the pale blue
 			"#277F8E", // Blue-Green
 			"#1FA187", // Aquamarine
