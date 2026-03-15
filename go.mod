@@ -1,6 +1,6 @@
 module github.com/katbyte/gogo-jira-stats
 
-go 1.19
+go 1.21
 
 require (
 	github.com/ctreminiom/go-atlassian v1.5.1
@@ -8,7 +8,6 @@ require (
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gookit/color v1.5.0
 	github.com/hashicorp/go-retryablehttp v0.7.4
-	github.com/jedib0t/go-pretty/v6 v6.4.3
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.3.0
@@ -22,7 +21,8 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
-	github.com/tidwall/gjson v1.16.0 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 )
@@ -30,14 +30,12 @@ require (
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect; indirectmak
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

@@ -46,7 +46,7 @@ type Issue struct {
 	// Sprint     string // do we bother with this? it is an internal process thing
 	Resolution string
 
-	Summery string
+	Summary string
 	Labels  []string
 
 	Creator string
@@ -58,7 +58,7 @@ type Issue struct {
 	Closed   time.Time // todo, need to parse events to get this
 }
 
-func (i Issue) IsCLosed() bool {
+func (i Issue) IsClosed() bool {
 	return i.Status == "Closed"
 }
 
@@ -82,6 +82,21 @@ func (cache Cache) UpsertIssueFromJIRA(issue *models.IssueScheme) error {
 		resolution = issue.Fields.Resolution.Name
 	}
 
+	issueType := ""
+	if issue.Fields.IssueType != nil {
+		issueType = issue.Fields.IssueType.Name
+	}
+
+	statusName := ""
+	if issue.Fields.Status != nil {
+		statusName = issue.Fields.Status.Name
+	}
+
+	creatorName := ""
+	if issue.Fields.Creator != nil {
+		creatorName = issue.Fields.Creator.DisplayName
+	}
+
 	createdDate, err := time.Parse("2006-01-02T15:04:05.000-0700", issue.Fields.Created)
 	if err != nil {
 		return fmt.Errorf("failed to parse Created date %s: %w", issue.Fields.Created, err)
@@ -93,12 +108,12 @@ func (cache Cache) UpsertIssueFromJIRA(issue *models.IssueScheme) error {
 	_, err = stmt.Exec(
 		issue.Key,
 		fmt.Sprintf("%s://%s/browse/%s", parsedURL.Scheme, parsedURL.Host, issue.Key),
-		issue.Fields.IssueType.Name,
-		issue.Fields.Status.Name,
+		issueType,
+		statusName,
 		resolution,
 		issue.Fields.Summary,
 		strings.Join(issue.Fields.Labels, ", "),
-		issue.Fields.Creator.DisplayName,
+		creatorName,
 		createdDate,
 		updatedDate,
 		0, // we calculate this after we get all events
@@ -121,11 +136,6 @@ func (cache Cache) QueryForIssues(qfmt string, a ...any) (*[]Issue, error) {
 	}
 	defer rows.Close()
 
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run issue query: %w", err)
-	}
-
 	issues := make([]Issue, 0)
 
 	var labels string
@@ -137,7 +147,7 @@ func (cache Cache) QueryForIssues(qfmt string, a ...any) (*[]Issue, error) {
 			&issue.Type,
 			&issue.Status,
 			&issue.Resolution,
-			&issue.Summery,
+			&issue.Summary,
 			&labels,
 			&issue.Creator,
 			&issue.Created,
@@ -145,12 +155,16 @@ func (cache Cache) QueryForIssues(qfmt string, a ...any) (*[]Issue, error) {
 			&issue.DaysOpen,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan pr: %w", err)
+			return nil, fmt.Errorf("failed to scan issue: %w", err)
 		}
 
 		issue.Labels = strings.Split(labels, ", ")
 
 		issues = append(issues, issue)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating issue rows: %w", err)
 	}
 
 	return &issues, nil
@@ -187,7 +201,6 @@ func (cache Cache) GetIssuesCreatedInDateRange(from, to time.Time) (*[]Issue, er
 		SELECT %s FROM issues
 		WHERE
 		    created BETWEEN '%s' AND '%s'
-			%s
 	`, IssueColumnsString(), from.Format("2006-01-02"), to.Format("2006-01-02"))
 }
 

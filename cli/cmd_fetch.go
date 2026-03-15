@@ -20,6 +20,7 @@ func CmdFetch(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("opening cache %s: %w", f.CachePath, err)
 	}
+	defer cache.DB.Close()
 
 	i := j.NewInstance(f.Url, f.User, f.Token)
 
@@ -33,14 +34,28 @@ func CmdFetch(_ *cobra.Command, _ []string) error {
 		for _, i := range results.Issues {
 			n++
 
+			if i.Fields == nil {
+				c.Printf("<darkGray>%03d/%d</> <lightGreen>%s</> - (no fields returned)\n", n, results.Total, i.Key)
+				continue
+			}
+
 			keyColour := "lightGreen"
-			if i.Fields.Status.Name == "Closed" {
+			statusName := "Unknown"
+			if i.Fields.Status != nil {
+				statusName = i.Fields.Status.Name
+			}
+			if statusName == "Closed" {
 				keyColour = "green"
 			}
 
 			parsedDate, err := time.Parse("2006-01-02T15:04:05.000-0700", i.Fields.Created)
 			if err != nil {
 				return fmt.Errorf("failed to parse date %s: %w", i.Fields.Created, err)
+			}
+
+			creatorName := "Unknown"
+			if i.Fields.Creator != nil {
+				creatorName = i.Fields.Creator.DisplayName
 			}
 
 			c.Printf("<darkGray>%03d/%d</> <%s>%s</><darkGray>@%s</> - %s\n", n, results.Total, keyColour, i.Key, parsedDate.Format("2006-01-02"), i.Fields.Summary)
@@ -52,7 +67,7 @@ func CmdFetch(_ *cobra.Command, _ []string) error {
 			if err != nil {
 				return fmt.Errorf("cache issue events upsert failed: %w", err)
 			}
-			c.Printf("    <darkGray>by </>%s, <%s>%s</> with <cyan>%d</> events\n", i.Fields.Creator.DisplayName, keyColour, i.Fields.Status.Name, *count)
+			c.Printf("    <darkGray>by </>%s, <%s>%s</> with <cyan>%d</> events\n", creatorName, keyColour, statusName, *count)
 
 			// if closed get events for status and find the date of the last one which is "closed" and update the issue with days open and "closed" date
 			// todo, we don't care about this yet & given the low issue count ( < 1000, we can just parse all events for all issues when reporting and generating graphs)

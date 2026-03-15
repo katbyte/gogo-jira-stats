@@ -8,7 +8,7 @@ import (
 	"github.com/ctreminiom/go-atlassian/pkg/infra/models"
 )
 
-var EventColumns = []string{"key", "author", "date", "field", "[from]", "[to]"}
+var EventColumns = []string{"id", "key", "author", "date", "field", "[from]", "[to]"}
 
 func EventColumnsString() string {
 	return strings.Join(EventColumns, ", ")
@@ -20,17 +20,18 @@ func EventColumnsPlaceholders() string {
 
 const CreateEventsTableSQL = `
 	CREATE TABLE "events" (
+	    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
 	    "key" CHAR(16) NOT NULL,
 	    "author" CHAR(64) NOT NULL,
 	    "date" DATE NOT NULL,
 	    "field" CHAR(32) NOT NULL,
 	    "from" CHAR(32) NOT NULL,
-	    "to" CHAR(32) NOT NULL,
-	    PRIMARY KEY (key, date, field)
+	    "to" CHAR(32) NOT NULL
 	)
 `
 
 type Event struct {
+	ID     int
 	Key    string
 	Author string
 	Date   time.Time
@@ -59,10 +60,10 @@ func (cache Cache) UpsertEventsFromIssue(issue *models.IssueScheme) (*int, error
 		}
 
 		for _, item := range change.Items {
-			stmt, err := cache.DB.Prepare(fmt.Sprintf(`
-				INSERT OR REPLACE INTO events (%s)
-				VALUES (%s)
-			`, EventColumnsString(), EventColumnsPlaceholders()))
+			stmt, err := cache.DB.Prepare(`
+				INSERT INTO events (key, author, date, field, [from], [to])
+				VALUES (?, ?, ?, ?, ?, ?)
+			`)
 			if err != nil {
 				return nil, fmt.Errorf("failed to prepare insert statement for issue %s changelog: %w", issue.Key, err)
 			}
@@ -97,15 +98,11 @@ func (cache Cache) QueryForEvents(qfmt string, a ...any) ([]Event, error) {
 	}
 	defer rows.Close()
 
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run event query: %w", err)
-	}
-
 	var events []Event
 	for rows.Next() {
 		e := Event{}
 		err = rows.Scan(
+			&e.ID,
 			&e.Key,
 			&e.Author,
 			&e.Date,
@@ -113,11 +110,15 @@ func (cache Cache) QueryForEvents(qfmt string, a ...any) ([]Event, error) {
 			&e.From,
 			&e.To,
 		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan events: %w", err)
+		}
 
 		events = append(events, e)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan events : %w", err)
-		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating event rows: %w", err)
 	}
 
 	return events, nil
@@ -136,15 +137,11 @@ func (cache Cache) GetIssueEventsForField(key, field string) ([]Event, error) {
 	}
 	defer rows.Close()
 
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get events for issue %s for field %s: %w", key, field, err)
-	}
-
 	var events []Event
 	for rows.Next() {
 		e := Event{}
 		err = rows.Scan(
+			&e.ID,
 			&e.Key,
 			&e.Author,
 			&e.Date,
@@ -152,11 +149,15 @@ func (cache Cache) GetIssueEventsForField(key, field string) ([]Event, error) {
 			&e.From,
 			&e.To,
 		)
-
-		events = append(events, e)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan events for issue %s for field %s: %w", key, field, err)
 		}
+
+		events = append(events, e)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating events for issue %s for field %s: %w", key, field, err)
 	}
 
 	return events, nil
