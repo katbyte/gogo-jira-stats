@@ -1,5 +1,5 @@
 GIT_COMMIT=$(shell git describe --always --long --dirty)
-GOLANGCI_LINT_VERSION?=v1.47.3
+GOLANGCI_LINT_VERSION?=v2.11.3
 TEST_TIMEOUT?=15m
 
 default: fmt build

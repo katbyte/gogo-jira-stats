@@ -27,7 +27,7 @@ func Open(path string) (*Cache, error) {
 
 	// create file
 	c.Printf("Creating <magenta>%s</>...\n", path)
-	if _, err := os.Create(path); err != nil {
+	if _, err := os.Create(path); err != nil { //nolint:gosec // CLI tool, path from config
 		return nil, fmt.Errorf("failed to create db %s: %w", path, err)
 	}
 	db, err := sql.Open("sqlite3", path)

@@ -7,6 +7,5 @@ import (
 // todo, something we need to do or will fancy graphs be enough?
 
 func CmdReport(_ *cobra.Command, args []string) error {
-
 	return nil
 }

@@ -41,14 +41,12 @@ type Event struct {
 }
 
 func (cache Cache) UpsertEventsFromIssue(issue *models.IssueScheme) (*int, error) {
-
 	count := 0
 	if issue.Changelog == nil {
 		return &count, nil
 	}
 
 	for _, change := range issue.Changelog.Histories {
-
 		author := ""
 		if change.Author != nil {
 			author = change.Author.DisplayName
@@ -76,11 +74,10 @@ func (cache Cache) UpsertEventsFromIssue(issue *models.IssueScheme) (*int, error
 				item.FromString,
 				item.ToString,
 			)
-
 			if err != nil {
 				return nil, fmt.Errorf("failed to insert issue %s changelog: %w", issue.Key, err)
 			}
-			stmt.Close()
+			stmt.Close() //nolint:errcheck,gosec
 
 			count++
 		}
@@ -96,7 +93,7 @@ func (cache Cache) QueryForEvents(qfmt string, a ...any) ([]Event, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare event query '%s': %w", q, err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var events []Event
 	for rows.Next() {
@@ -135,7 +132,7 @@ func (cache Cache) GetIssueEventsForField(key, field string) ([]Event, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query events for issue %s for field %s: %w", key, field, err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	var events []Event
 	for rows.Next() {

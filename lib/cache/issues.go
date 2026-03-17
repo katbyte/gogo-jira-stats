@@ -118,11 +118,10 @@ func (cache Cache) UpsertIssueFromJIRA(issue *models.IssueScheme) error {
 		updatedDate,
 		0, // we calculate this after we get all events
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to insert issue %s: %w", issue.Key, err)
 	}
-	stmt.Close()
+	stmt.Close() //nolint:errcheck,gosec
 
 	return nil
 }
@@ -134,7 +133,7 @@ func (cache Cache) QueryForIssues(qfmt string, a ...any) (*[]Issue, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare issue query '%s': %w", q, err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck
 
 	issues := make([]Issue, 0)
 
@@ -177,7 +176,6 @@ func (cache Cache) GetIssue(key string) (*Issue, error) {
 	WHERE
 	    key = '%s'
 	`, IssueColumnsString(), key)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to query for issue %s: %w", key, err)
 	}

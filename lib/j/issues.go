@@ -64,7 +64,7 @@ func (i Instance) ListAllIssues(jql string, fields, expand *[]string, cb func(*m
 		}
 
 		respBody, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck,gosec
 		if err != nil {
 			return fmt.Errorf("failed to read response body: %w", err)
 		}

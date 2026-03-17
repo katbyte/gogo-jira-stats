@@ -20,7 +20,7 @@ func CmdFetch(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("opening cache %s: %w", f.CachePath, err)
 	}
-	defer cache.DB.Close()
+	defer cache.DB.Close() //nolint:errcheck
 
 	i := j.NewInstance(f.Url, f.User, f.Token)
 
@@ -71,7 +71,6 @@ func CmdFetch(_ *cobra.Command, _ []string) error {
 
 			// if closed get events for status and find the date of the last one which is "closed" and update the issue with days open and "closed" date
 			// todo, we don't care about this yet & given the low issue count ( < 1000, we can just parse all events for all issues when reporting and generating graphs)
-
 		}
 		return nil
 	})

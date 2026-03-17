@@ -27,8 +27,8 @@ func configureFlags(root *cobra.Command) error {
 	pflags.StringVarP(&flags.User, "user", "u", "", "jira user")
 	pflags.StringVarP(&flags.Token, "token", "t", "", "jira oauth token (JIRA_TOKEN)")
 	pflags.StringVarP(&flags.JQL, "jql", "q", "", "jira jql query to list all issues")
-	pflags.StringSliceVarP(&flags.Fields, "fields", "f", nil, "jira fields to fetch seperated by commas")
-	pflags.StringSliceVarP(&flags.Expand, "expand", "e", nil, "jira fields to expand seperated by commas")
+	pflags.StringSliceVarP(&flags.Fields, "fields", "f", nil, "jira fields to fetch separated by commas")
+	pflags.StringSliceVarP(&flags.Expand, "expand", "e", nil, "jira fields to expand separated by commas")
 	pflags.StringVarP(&flags.CachePath, "cache", "c", "", "path to sqllite3 db to use as cache")
 
 	// binding map for viper/pflag -> env
@@ -58,7 +58,7 @@ func configureFlags(root *cobra.Command) error {
 }
 
 func GetFlags() FlagData {
-	// for some reason we don't get a proper array back from viper for authors so fix it liek this for now TODO FIX
+	// for some reason we don't get a proper array back from viper for authors so fix it like this for now TODO FIX
 	fields := viper.GetStringSlice("fields")
 	if len(fields) != 0 {
 		fields = strings.Split(fields[0], ",")

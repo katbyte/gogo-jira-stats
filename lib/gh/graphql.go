@@ -15,14 +15,15 @@ func (t Token) GraphQLQueryUnmarshal(query string, params [][]string, data inter
 }
 
 func (t Token) GraphQLQuery(query string, params [][]string) (*string, error) {
-	args := []string{"api", "graphql", "-f", query}
+	args := make([]string, 0, 4+2*len(params))
+	args = append(args, "api", "graphql", "-f", query)
 
 	for _, p := range params {
 		args = append(args, p[0])
 		args = append(args, p[1])
 	}
 
-	ghc := exec.Command("gh", args...)
+	ghc := exec.Command("gh", args...) //nolint:gosec // invoking gh CLI tool
 	if t.Token != nil {
 		ghc.Env = []string{"GITHUB_TOKEN=" + *t.Token}
 	}
@@ -31,7 +32,7 @@ func (t Token) GraphQLQuery(query string, params [][]string) (*string, error) {
 	s := string(out)
 
 	if err != nil {
-		return &s, fmt.Errorf("graph ql query error: %s\n\n %s\n\n%s", err, query, out)
+		return &s, fmt.Errorf("graph ql query error: %w\n\n %s\n\n%s", err, query, out)
 	}
 
 	return &s, nil

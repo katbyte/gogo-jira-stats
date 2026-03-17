@@ -23,7 +23,7 @@ func CmdGraphs(_ *cobra.Command, args []string) error {
 
 	// ensure path exists
 	if _, err := os.Stat(outPath); os.IsNotExist(err) {
-		err := os.MkdirAll(outPath, os.ModePerm)
+		err := os.MkdirAll(outPath, os.ModePerm) //nolint:gosec // CLI tool, not a security concern
 		if err != nil {
 			return fmt.Errorf("failed to create path: %w", err)
 		}
@@ -54,7 +54,7 @@ func CmdGraphs(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("opening cache %s: %w", f.CachePath, err)
 	}
-	defer cache.DB.Close()
+	defer cache.DB.Close() //nolint:errcheck
 
 	c.Printf("Generating graphs for issues from <white>%s</> to <white>%s</>...\n", from.Format("2006-01-02"), to.Format("2006-01-02"))
 	if err = GraphRepoOpenIssuesDaily(cache, outPath, from, to); err != nil {
@@ -79,7 +79,7 @@ func colorizeStatus(status string) string {
 		return c.Sprintf("<cyan>%s</>", status)
 	case "Accepted", "To Do":
 		return c.Sprintf("<lightGreen>%s</>", status)
-	case "Prioritized":
+	case "Prioritised":
 		return c.Sprintf("<lightCyan>%s</>", status)
 	case "Pending Triage":
 		return c.Sprintf("<lightYellow>%s</>", status)
@@ -107,18 +107,18 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 	c.Printf("    Loaded <white>%d</> issues from cache\n", len(*issues))
 
 	// defined statuses for the graph (in stack order)
-	allStatuses := []string{"Other", "Accepted", "Awaiting Prioritization", "Pending Triage", "Blocked", "Needs More Info", "To Do", "Prioritized", "In Progress", "In Review"}
+	allStatuses := []string{"Other", "Accepted", "Awaiting Prioritisation", "Pending Triage", "Blocked", "Needs More Info", "To Do", "Prioritised", "In Progress", "In Review"}
 	statusLookupMap := map[string]bool{}
 	for _, status := range allStatuses {
 		statusLookupMap[status] = true
 	}
 
-	// status mappings to normalize variations
+	// status mappings to normalise variations
 	statusMappings := map[string]string{
 		"In Development":             "In Progress",
 		"Accepted":                   "To Do",
 		"Need More Information":      "Needs More Info",
-		"R&D to Investigate Further": "Awaiting Prioritization",
+		"R&D to Investigate Further": "Awaiting Prioritisation",
 		"Security Triage":            "Pending Triage",
 		"Under Review by R&D PM":     "In Review",
 	}
@@ -229,11 +229,9 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 		// by playing back events to "set the state" until the events
 		eventIndex := 0
 		for day := opened; ; day = day.AddDate(0, 0, 1) {
-
 			// go through all events for "today" and set the status
 			if len(events) > 0 {
 				for ; eventIndex < len(events) && events[eventIndex].Date.Before(day.AddDate(0, 0, 1)); eventIndex++ {
-
 					status = events[eventIndex].To
 					if status == "Closed" {
 						break
@@ -337,7 +335,7 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 			Width:  "1500px",
 			Height: "750px",
 		}),
-		charts.WithColorsOpts(opts.Colors{
+		charts.WithColorsOpts(opts.Colors{ //nolint:misspell // library type name
 			"#440154", // Deep Violet
 			"#365C8D", // Dark Blue
 			"#46337E", // Violet
@@ -377,7 +375,7 @@ func GraphRepoOpenIssuesDaily(theCache *cache.Cache, outPath string, from, to ti
 
 	// Where the magic happens
 	outFile := outPath + "/daily-issues-open.html"
-	file, err := os.Create(outFile)
+	file, err := os.Create(outFile) //nolint:gosec // CLI tool, path is not user-controlled
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}

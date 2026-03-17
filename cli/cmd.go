@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/katbyte/gogo-jira-stats/version"
@@ -13,7 +14,7 @@ func ValidateParams(params []string) func(cmd *cobra.Command, args []string) err
 	return func(cmd *cobra.Command, args []string) error {
 		for _, p := range params {
 			if viper.GetString(p) == "" {
-				return fmt.Errorf(p + " parameter can't be empty")
+				return errors.New(p + " parameter can't be empty")
 			}
 		}
 
@@ -22,7 +23,6 @@ func ValidateParams(params []string) func(cmd *cobra.Command, args []string) err
 }
 
 func Make(cmdName string) (*cobra.Command, error) {
-
 	// todo should this be a no-op to avoid accidentally triggering broken runs on malformed commands ?
 	root := &cobra.Command{
 		Use:           cmdName + " [command]",
@@ -30,7 +30,7 @@ func Make(cmdName string) (*cobra.Command, error) {
 		Long:          `TODO`,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("valid sub commands: [fetch|report|graphs|version]")
+			return errors.New("valid sub commands: [fetch|report|graphs|version]")
 		},
 	}
 
