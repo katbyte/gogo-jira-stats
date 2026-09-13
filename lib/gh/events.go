@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/google/go-github/v45/github"
-	"github.com/katbyte/gogo-jira-stats/lib/clog"
+	"github.com/katbyte/go-kt/clog"
 )
 
 func (r Repo) ListAllIssueEvents(number int, cb func([]*github.Timeline, *github.Response) error) error {

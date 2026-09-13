@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/katbyte/gogo-jira-stats/version"
+	"github.com/katbyte/go-kt/version"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -66,7 +66,7 @@ func Make(cmdName string) (*cobra.Command, error) {
 		Args:          cobra.NoArgs,
 		SilenceErrors: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(cmdName + " v" + version.Version + "-" + version.GitCommit)
+			fmt.Println(cmdName + " " + version.Version + "-" + version.GitCommit)
 		},
 	})
 

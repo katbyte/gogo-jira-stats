@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/go-github/v45/github"
-	"github.com/katbyte/gogo-jira-stats/lib/clog"
+	"github.com/katbyte/go-kt/clog"
 )
 
 func (r Repo) IssueURL(pr int) string {
